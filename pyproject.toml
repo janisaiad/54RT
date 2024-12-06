@@ -19,8 +19,8 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-package-dir = {} # "QR1" = "models/QR1/", "QR2" = "models/QR2/"
-packages = [] # ["QR1", "QR2"]
+package-dir = {wipy = "wipy/"} # "QR1" = "models/QR1/", "QR2" = "models/QR2/"
+packages = ["wipy"] # ["QR1", "QR2"]
 
 
 
