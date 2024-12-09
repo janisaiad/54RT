@@ -1,0 +1,9 @@
+Precision Modulation,Precision Dictionnaire
+100.00%,100.00%
+
+Signal,Modulation Reelle,Modulation Predite,Prob CW,Prob FMCW,Prob chirp,Prob impulsionnel,Dictionnaire Reel,Dictionnaire Predit,Prob CONDUITE_TIR_1_dic,Prob CONDUITE_TIR_2_dic,Prob MULTIFCT_dic,Prob SUR_SURFACE_dic,Prob TA_dic,Prob VEILLE_COMBINEE_dic
+Signal 1,impulsionnel,impulsionnel,0.000,0.000,0.000,1.000,MULTIFCT_dic,MULTIFCT_dic,0.000,0.000,1.000,0.000,0.000,0.000
+Signal 2,FMCW,FMCW,0.000,1.000,0.000,0.000,SUR_SURFACE_dic,SUR_SURFACE_dic,0.000,0.000,0.000,1.000,0.000,0.000
+Signal 3,FMCW,FMCW,0.000,1.000,0.000,0.000,CONDUITE_TIR_2_dic,CONDUITE_TIR_2_dic,0.000,1.000,0.000,0.000,0.000,0.000
+Signal 4,FMCW,FMCW,0.000,1.000,0.000,0.000,VEILLE_COMBINEE_dic,VEILLE_COMBINEE_dic,0.000,0.000,0.000,0.000,0.000,1.000
+Signal 5,FMCW,FMCW,0.000,1.000,0.000,0.000,CONDUITE_TIR_2_dic,CONDUITE_TIR_2_dic,0.000,1.000,0.000,0.000,0.000,0.000
