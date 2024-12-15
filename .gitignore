@@ -3,3 +3,5 @@
 uv.lock
 tach.lock
 .pytest_cache/
+signal/signal_data.csv
+signal/signal_20240704_131140.npy
