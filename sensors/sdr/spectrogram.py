@@ -1,125 +1,204 @@
-.
-(base) janis@Legion:/mnt/c/Users/maros$ ssh rpi@169.254.72.10
-rpi@169.254.72.10's password:
-Linux raspberrypi 6.6.31+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.6.31-1+rpt1 (2024-05-29) aarch64
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
-The programs included with the Debian GNU/Linux system are free software;
-the exact distribution terms for each program are described in the
-individual files in /usr/share/doc/*/copyright.
+import os
+import sys
+import numpy as np
+from gnuradio import gr
+from gnuradio import blocks
+from gnuradio import fft
+from gnuradio.fft import window
+import osmosdr
+import time
+from datetime import datetime
+import matplotlib.pyplot as plt
 
-Debian GNU/Linux comes with ABSOLUTELY NO WARRANTY, to the extent
-permitted by applicable law.
-Last login: Thu Jul  4 10:47:13 2024 from 169.254.244.48
-(base) rpi@raspberrypi:~ $ ls
-radioconda  radioconda-2024.05.29-Linux-aarch64.sh  sdr_packages  spectrum_analysis.md  tetra
-(base) rpi@raspberrypi:~ $ cd tetra
-(base) rpi@raspberrypi:~/tetra $ ls
-npy  png  spectrogram  spectrogram.py  spectrum_analysis.md  test.py  tetra2.py  tetra.py  tetra_to_npy.py
-(base) rpi@raspberrypi:~/tetra $ cd png
-(base) rpi@raspberrypi:~/tetra/png $ ls
-(base) rpi@raspberrypi:~/tetra/png $ cd -
-/home/rpi/tetra
-(base) rpi@raspberrypi:~/tetra $ ls
-npy  png  spectrogram  spectrogram.py  spectrum_analysis.md  test.py  tetra2.py  tetra.py  tetra_to_npy.py
-(base) rpi@raspberrypi:~/tetra $ rm -rf spectrogram.py
-(base) rpi@raspberrypi:~/tetra $ touch spectrogram.py
-(base) rpi@raspberrypi:~/tetra $ nano spectrogram.py
-(base) rpi@raspberrypi:~/tetra $ python spectrogram.py
-=== Analyseur de Spectre RTL-SDR - Bande AM ===
-Plage: 800-1050 kHz
-Taux d'échantillonnage: 2 MHz
-gr-osmosdr 0.2.0.0 (0.2.0) gnuradio 3.10.10.0
-built-in source types: file fcd rtl rtl_tcp uhd miri hackrf bladerf rfspace airspy airspyhf soapy redpitaya
-Using device #0 Realtek RTL2838UHIDIR SN: 00000001
-Found Rafael Micro R820T tuner
-Enabled direct sampling mode, input 2
-Exact sample rate is: 2000000.052982 Hz
-Démarrage de l'analyse...
+class SpectrumAnalyzer(gr.top_block):
+    def __init__(self):
+        gr.top_block.__init__(self, "Analyseur de Spectre")
 
-Acquisition du spectrogramme...
-....^C
-Arrêt demandé par l'utilisateur
-Arrêt de l'analyseur...
-Terminé.
-(base) rpi@raspberrypi:~/tetra $ nano spectrogram.py
-(base) rpi@raspberrypi:~/tetra $ python spectrogram.py
-=== Analyseur de Spectre RTL-SDR - Bande AM ===
-Plage: 800-1050 kHz
-Taux d'échantillonnage: 2 MHz
-gr-osmosdr 0.2.0.0 (0.2.0) gnuradio 3.10.10.0
-built-in source types: file fcd rtl rtl_tcp uhd miri hackrf bladerf rfspace airspy airspyhf soapy redpitaya
-Using device #0 Realtek RTL2838UHIDIR SN: 00000001
-Found Rafael Micro R820T tuner
-Enabled direct sampling mode, input 2
-Exact sample rate is: 2000000.052982 Hz
-Démarrage de l'analyse...
+        # Paramètres adaptés pour RTL-SDR
+        self.samp_rate = 2e6      # 2 MHz (maximum stable pour RTL-SDR)
+        self.fft_size = 1024
+        self.freq_start = 370e6   # 370 MHz
+        self.freq_end = 410e6     # 410 MHz
+        self.freq_step = 1e6      # 1 MHz steps
+        self.gain = 30
+        self.threshold = -70
+        self.dwell_time = 0.1
+        self.history_size = 60    # 60 scans pour le spectrogramme
 
-Acquisition du spectrogramme...
-.........................................................................^C
-Arrêt demandé par l'utilisateur
-Arrêt de l'analyseur...
-Terminé.
-(base) rpi@raspberrypi:~/tetra $ ls
-npy  png  spectrogram  spectrogram.py  spectrum_analysis.md  test.py  tetra2.py  tetra.py  tetra_to_npy.py
-(base) rpi@raspberrypi:~/tetra $ cd spectrogram/
-(base) rpi@raspberrypi:~/tetra/spectrogram $ ls
-(base) rpi@raspberrypi:~/tetra/spectrogram $ cd -
-/home/rpi/tetra
-(base) rpi@raspberrypi:~/tetra $ ls
-npy  png  spectrogram  spectrogram.py  spectrum_analysis.md  test.py  tetra2.py  tetra.py  tetra_to_npy.py
-(base) rpi@raspberrypi:~/tetra $ rm -rf spectrogram.py
-(base) rpi@raspberrypi:~/tetra $ touch spectrogram.py
-(base) rpi@raspberrypi:~/tetra $ nano spectrogram.py
-(base) rpi@raspberrypi:~/tetra $ python spectrogram.py
-=== Analyseur de Spectre FFT - Bande AM ===
-gr-osmosdr 0.2.0.0 (0.2.0) gnuradio 3.10.10.0
-built-in source types: file fcd rtl rtl_tcp uhd miri hackrf bladerf rfspace airspy airspyhf soapy redpitaya
-Using device #0 Realtek RTL2838UHIDIR SN: 00000001
-Found Rafael Micro R820T tuner
-Enabled direct sampling mode, input 2
-Exact sample rate is: 2000000.052982 Hz
-/home/rpi/tetra/spectrogram.py:219: UserWarning: frames=None which we can infer the length of, did not pass an explicit *save_count* and passed cache_frame_data=True.  To avoid a possibly unbounded cache, frame data caching has been disabled. To suppress this warning either pass `cache_frame_data=False` or `save_count=MAX_FRAMES`.
-  ani = FuncAnimation(
-Traceback (most recent call last):
-  File "/home/rpi/tetra/spectrogram.py", line 251, in <module>
+        # Buffer pour le spectrogramme
+        self.spectrogram_buffer = []
+        
+        # Source RTL-SDR
+        self.source = osmosdr.source(args="numchan=" + str(1) + " " + "rtl=0")
+        self.source.set_sample_rate(self.samp_rate)
+        self.source.set_gain(self.gain)
+        self.source.set_if_gain(20)
+        self.source.set_bb_gain(20)
+        self.source.set_antenna("")
+
+        # Blocs de traitement
+        self.s2v = blocks.stream_to_vector(gr.sizeof_gr_complex, self.fft_size)
+        self.fft = fft.fft_vcc(
+            self.fft_size,
+            True,
+            window.blackmanharris(self.fft_size),
+            True,
+            1
+        )
+        self.mag = blocks.complex_to_mag_squared(self.fft_size)
+        self.probe = blocks.probe_signal_vf(self.fft_size)
+
+        # Connexions
+        self.connect(self.source, self.s2v, self.fft, self.mag, self.probe)
+
+    def scan_spectrum(self):
+        """Scanne le spectre et retourne les données pour le spectrogramme"""
+        spectrum_data = []
+        results = []
+        
+        num_steps = int((self.freq_end - self.freq_start) / self.freq_step)
+        
+        for i in range(num_steps):
+            current_freq = self.freq_start + i * self.freq_step
+            self.source.set_center_freq(current_freq)
+            
+            time.sleep(self.dwell_time)
+            
+            try:
+                fft_data = np.array(self.probe.level())
+                if len(fft_data) == 0:
+                    continue
+                    
+                power_db = 10 * np.log10(fft_data + 1e-10)
+                spectrum_data.extend(power_db)
+                
+                # Calcul des fréquences pour ce segment
+                freq_step = self.samp_rate / self.fft_size
+                frequencies = np.arange(current_freq - self.samp_rate/2,
+                                      current_freq + self.samp_rate/2,
+                                      freq_step)
+                
+                for freq, power in zip(frequencies, power_db):
+                    if power > self.threshold:
+                        results.append((freq, float(power)))
+                        
+            except Exception as e:
+                print(f"Erreur pendant le scan: {str(e)}")
+                continue
+        
+        # Mise à jour du buffer du spectrogramme
+        if spectrum_data:
+            self.spectrogram_buffer.append(spectrum_data)
+            if len(self.spectrogram_buffer) > self.history_size:
+                self.spectrogram_buffer.pop(0)
+        
+        return sorted(results, key=lambda x: x[1], reverse=True)
+
+def plot_spectrogram(analyzer, timestamp):
+    """Crée et sauve le spectrogramme"""
+    if not analyzer.spectrogram_buffer:
+        print("Pas de données pour le spectrogramme")
+        return
+        
+    plt.figure(figsize=(15, 10))
+    
+    # Création du spectrogramme
+    spectrogram_data = np.array(analyzer.spectrogram_buffer)
+    
+    # Calcul des axes
+    freq_axis = np.linspace(analyzer.freq_start/1e6, 
+                           analyzer.freq_end/1e6, 
+                           spectrogram_data.shape[1])
+    time_axis = np.arange(spectrogram_data.shape[0]) * \
+                (analyzer.dwell_time * len(freq_axis))
+    
+    # Plot du spectrogramme
+    plt.pcolormesh(freq_axis, 
+                   time_axis, 
+                   spectrogram_data,
+                   shading='auto',
+                   cmap='viridis')
+    
+    plt.colorbar(label='Puissance (dBm)')
+    plt.xlabel('Fréquence (MHz)')
+    plt.ylabel('Temps (s)')
+    plt.title(f'Spectrogramme {analyzer.freq_start/1e6:.0f}-{analyzer.freq_end/1e6:.0f} MHz - {timestamp}')
+    
+    # Ajout d'informations techniques
+    plt.text(0.02, 0.98, 
+             f'Taux échantillonnage: {analyzer.samp_rate/1e6:.1f} MHz\n'
+             f'Résolution FFT: {analyzer.fft_size} points\n'
+             f'Pas de fréquence: {analyzer.freq_step/1e6:.1f} MHz',
+             transform=plt.gca().transAxes,
+             bbox=dict(facecolor='white', alpha=0.8),
+             verticalalignment='top')
+    
+    # Sauvegarde
+    plt.savefig(f'spectrogram/spectrogram_{timestamp.replace(":", "-")}.png', 
+                dpi=300, 
+                bbox_inches='tight')
+    plt.close()
+
+def write_markdown(results, timestamp, filename="rtlsdr_analysis.md"):
+    """Écrit les résultats dans un fichier Markdown"""
+    with open(filename, 'a', encoding='utf-8') as f:
+        f.write(f"\n## Analyse Spectrale - {timestamp}\n\n")
+        
+        # Ajout du spectrogramme
+        f.write(f"![Spectrogramme](spectrogram_{timestamp.replace(':', '-')}.png)\n\n")
+        
+        f.write("### Pics de Signal Détectés\n\n")
+        f.write("| Fréquence (MHz) | Puissance (dBm) |\n")
+        f.write("|-----------------|----------------|\n")
+        
+        for freq, power in results[:20]:
+            f.write(f"| {freq/1e6:.3f} | {power:.2f} |\n")
+        
+        f.write("\n---\n")
+
+def main():
+    print("=== Analyseur de Spectre RTL-SDR ===")
+    print(f"Plage: 370-410 MHz")
+    print(f"Taux d'échantillonnage: 2 MHz")
+    
+    tb = SpectrumAnalyzer()
+    print("Démarrage de l'analyse...")
+    tb.start()
+    
+    try:
+        while True:
+            print("\nAcquisition du spectrogramme...")
+            
+            # Acquisition de plusieurs scans pour le spectrogramme
+            for _ in range(tb.history_size):
+                results = tb.scan_spectrum()
+                print(".", end="", flush=True)
+                time.sleep(0.1)
+            
+            timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+            
+            # Création du spectrogramme
+            plot_spectrogram(tb, timestamp)
+            
+            # Sauvegarde des résultats
+            write_markdown(results, timestamp)
+            
+            print("\nSpectrogramme sauvegardé")
+            print("Attente de 5 secondes...")
+            time.sleep(5)
+            
+    except KeyboardInterrupt:
+        print("\nArrêt demandé par l'utilisateur")
+    except Exception as e:
+        print(f"Erreur: {str(e)}")
+    finally:
+        print("Arrêt de l'analyseur...")
+        tb.stop()
+        tb.wait()
+        print("Terminé.")
+
+if __name__ == '__main__':
     main()
-  File "/home/rpi/tetra/spectrogram.py", line 219, in main
-    ani = FuncAnimation(
-  File "/home/rpi/radioconda/lib/python3.10/site-packages/matplotlib/animation.py", line 1695, in __init__
-    super().__init__(fig, **kwargs)
-  File "/home/rpi/radioconda/lib/python3.10/site-packages/matplotlib/animation.py", line 1417, in __init__
-    super().__init__(fig, event_source=event_source, *args, **kwargs)
-  File "/home/rpi/radioconda/lib/python3.10/site-packages/matplotlib/animation.py", line 888, in __init__
-    self._setup_blit()
-  File "/home/rpi/radioconda/lib/python3.10/site-packages/matplotlib/animation.py", line 1211, in _setup_blit
-    self._post_draw(None, self._blit)
-  File "/home/rpi/radioconda/lib/python3.10/site-packages/matplotlib/animation.py", line 1166, in _post_draw
-    self._fig.canvas.draw_idle()
-  File "/home/rpi/radioconda/lib/python3.10/site-packages/matplotlib/backend_bases.py", line 1893, in draw_idle
-    self.draw(*args, **kwargs)
-  File "/home/rpi/radioconda/lib/python3.10/site-packages/matplotlib/backends/backend_agg.py", line 388, in draw
-    self.figure.draw(self.renderer)
-  File "/home/rpi/radioconda/lib/python3.10/site-packages/matplotlib/artist.py", line 95, in draw_wrapper
-    result = draw(artist, renderer, *args, **kwargs)
-  File "/home/rpi/radioconda/lib/python3.10/site-packages/matplotlib/artist.py", line 72, in draw_wrapper
-    return draw(artist, renderer)
-  File "/home/rpi/radioconda/lib/python3.10/site-packages/matplotlib/figure.py", line 3164, in draw
-    DrawEvent("draw_event", self.canvas, renderer)._process()
-  File "/home/rpi/radioconda/lib/python3.10/site-packages/matplotlib/backend_bases.py", line 1271, in _process
-    self.canvas.callbacks.process(self.name, self)
-  File "/home/rpi/radioconda/lib/python3.10/site-packages/matplotlib/cbook.py", line 303, in process
-    self.exception_handler(exc)
-  File "/home/rpi/radioconda/lib/python3.10/site-packages/matplotlib/cbook.py", line 87, in _exception_printer
-    raise exc
-  File "/home/rpi/radioconda/lib/python3.10/site-packages/matplotlib/cbook.py", line 298, in process
-    func(*args, **kwargs)
-  File "/home/rpi/radioconda/lib/python3.10/site-packages/matplotlib/animation.py", line 912, in _start
-    self._init_draw()
-  File "/home/rpi/radioconda/lib/python3.10/site-packages/matplotlib/animation.py", line 1749, in _init_draw
-    self._draw_frame(frame_data)
-  File "/home/rpi/radioconda/lib/python3.10/site-packages/matplotlib/animation.py", line 1768, in _draw_frame
-    self._drawn_artists = self._func(framedata, *self._args)
-  File "/home/rpi/tetra/spectrogram.py", line 182, in update_plot
-    ax.texts.clear()
-AttributeError: 'ArtistList' object has no attribute 'clear'
-(base) rpi@raspberrypi:~/tetra $; donne moi tout le code en 1 copy pastable
